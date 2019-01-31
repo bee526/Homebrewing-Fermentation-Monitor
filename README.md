@@ -1,4 +1,4 @@
-# Homebrewing Fermentation Monitor for BEE526
+# Homebrewing Fermentation Monitor
 
 Our system is designed for the use of monitoring the home brew fermentation process. Normally fermentation is monitored by taking manual daily samples of the beer with a hydrometer to determine the liquid density. This liquid density decreases as the yeast convert the sugars into carbon dioxide and ethanol, and levels out when fermentation is complete. This method can easily introduce outside contamination each time a sample is taken, so hands free automated process is preferred.  
 
