@@ -16,11 +16,15 @@
    01/28/2019 - REV 2
    Commented CODE and Reorginized
 
+   02/03/2019 - Rev 3
+   Updated battery function for reading battery voltage, May not be sensitive enough at the high end, might need additional resistance.
+   Fixed logic on test macros
+   Connected Accelerometer
+
 
    TO DO
    Add message error checking, Call and Responce
    Determine data collection for Accelerometer
-   Update battery voltage
    
 */
 
@@ -35,11 +39,11 @@
 
 /**************************** DEFINITIONS AND VARIABLES ********************************/
 // DEFINE FIRMWARE
-#define FIRMWARE_VERSION 2
+#define FIRMWARE_VERSION 3
 
 
 // TEST ENABLES
-#define TEST_ENABLE_TEST_DATA true
+#define TEST_ENABLE_TEST_DATA false
 #define TEST_DISABLE_SLEEP    false
 
 
@@ -65,9 +69,10 @@ IPAddress ClientIP(192, 168, 4, 2);
 #define wakeup_pin            D0  // Pin set to wake up the ESP after sleeping
 #define ota_pin_low           D3  // Drive bin low for easy OTA pin handleing
 #define ota_pin_input         D4  // Input pin, set to low to start OTA during boot
+#define battery_voltage       A0
 // SCL D1                         // Default arduino preprocessed 
 // SDA D2                         // Default arduino preprocessed
-ADC_MODE(ADC_VCC);                // To read VCC voltage, TEMP, will need to update this to read battery voltage from A1
+
 
 
 // DEFINE VARIABLE DEFINITIONS
@@ -101,6 +106,9 @@ void setup() {
 
   // Connect D0 to RST to wake up
   pinMode(wakeup_pin, WAKEUP_PULLUP);
+
+  // Set Battery voltage input pin
+  pinMode(A0, INPUT);
 
 
   // Check if OTA jumper is connected
@@ -172,7 +180,7 @@ void setup() {
 
 
   // Put to Sleep
-  if (TEST_DISABLE_SLEEP) {
+  if (!TEST_DISABLE_SLEEP) {
     // Send disconnected message
     sendMessage(packageMessageDisconnected());
 
@@ -287,11 +295,13 @@ void otaUpdateLoop() {
 
 /*
  * Battery voltage or life function,
- * Currently only returning VCC
- * Additionl external circuit is needed to feed battery voltage to A0 input pin
+ * ESP analog pin reads from 0 to 1v, the onboard voltage divider (GND -100k- analog input -220k- A0) boost it to from 0 to 3.3v
+ * An additional 100k is provided between the battery + terminal to A0, to allow from 0 to 4.2v
+ * Full charge of the battery is 4.2v
+ * Dead battery is ~3.3v
  */
 float getBattery() {
-  return (ESP.getVcc() / 1024.0);
+  return analogRead(A0) * (4.2/1023);
 }
 
 
