@@ -140,21 +140,27 @@ void setup() {
   Serial.println(WiFi.localIP());
   Serial.print("Local port: ");
   Serial.println(udp.localPort());
-
+  Serial.println();
 
   // Send initial connection message
-  sendMessage(packageMessageConnected());
+  sendMessageConnected();
 
   // Wait for responce, up to 20 sec
   Serial.println("Wait for reply");
   for (int i = 0; i <= 10; i++) {
     if (checkMessageReceived()) {
-      Serial.println();
       Serial.println("Reply was Received");
+      Serial.println();
       break;
     }
     delay(500);
     Serial.print(".");
+    if (i==10) {
+      Serial.println();
+      Serial.println("Reply was NOT Received");
+      Serial.println();
+      break;
+    }
   }
 
   if (!TEST_ENABLE_TEST_DATA) {
@@ -175,14 +181,13 @@ void setup() {
 
   // Send Data
   Serial.println("Send Values");
-  Serial.println();
-  sendMessage(packageMessageValues());
+  sendMessageValues();
 
 
   // Put to Sleep
   if (!TEST_DISABLE_SLEEP) {
     // Send disconnected message
-    sendMessage(packageMessageDisconnected());
+    sendMessageDisconnected();
 
     Serial.println(("Put ESP to Sleep for " + String(sensorSleepInterval) + " seconds").c_str());
     delay(1000);
@@ -370,7 +375,7 @@ void unpackageMessage(char* payload) {
 /*
  * Package the local data for Output Connected message
  */
-char* packageMessageConnected() {
+void sendMessageConnected() {
   StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
 
   JsonObject& root = jsonBuffer.createObject();
@@ -383,14 +388,22 @@ char* packageMessageConnected() {
 
   char buffer[root.measureLength() + 1];
   root.printTo(buffer, sizeof(buffer));
-  return buffer;
 
+  // Send over serial
+  Serial.println("Sending " + String(sizeof(buffer)) + " bytes ");
+  Serial.println(buffer);
+  Serial.println();
+
+  // Send over UDP
+  udp.beginPacket(ServerIP, udp_port);
+  udp.write(buffer, sizeof(buffer));
+  udp.endPacket();
 }
 
 /*
  * Package the local data for Output Disconnected message
  */
-char* packageMessageDisconnected() {
+void sendMessageDisconnected() {
   StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
 
   JsonObject& root = jsonBuffer.createObject();
@@ -403,15 +416,23 @@ char* packageMessageDisconnected() {
 
   char buffer[root.measureLength() + 1];
   root.printTo(buffer, sizeof(buffer));
-  return buffer;
+  
+  // Send over serial
+  Serial.println("Sending " + String(sizeof(buffer)) + " bytes ");
+  Serial.println(buffer);
+  Serial.println();
 
+  // Send over UDP
+  udp.beginPacket(ServerIP, udp_port);
+  udp.write(buffer, sizeof(buffer));
+  udp.endPacket();
 }
 
 
 /*
  * Package the local data for Output Values message
  */
-char* packageMessageValues() {
+void sendMessageValues() {
   StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
 
   JsonObject& root = jsonBuffer.createObject();
@@ -442,23 +463,13 @@ char* packageMessageValues() {
   char buffer[root.measureLength() + 1];
   root.printTo(buffer, sizeof(buffer));
 
-  return buffer;
-}
-
-
-/*
- * Sends the packaged message to Serail & UDP 
- */
-void sendMessage(char* package) {
-
   // Send over serial
-  Serial.println("Sending " + String(strlen(package)) + " bytes ");
-  Serial.println(package);
+  Serial.println("Sending " + String(sizeof(buffer)) + " bytes ");
+  Serial.println(buffer);
   Serial.println();
-  delay(500);
 
   // Send over UDP
   udp.beginPacket(ServerIP, udp_port);
-  udp.write(package);
+  udp.write(buffer, sizeof(buffer));
   udp.endPacket();
 }

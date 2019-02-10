@@ -566,7 +566,7 @@ void unpackageMessage(char* payload) {
       sensorSignal = root["signal"];
       Serial.printf("[Sensor Connected] Battery: %f, Signal: %d \n\n", sensorBattery, sensorSignal);
       // Send Reply with current state
-      sendMessage(packageMessage(commandState, sensorSleepInterval, sensorSampleNumber));
+      sendMessage(commandState, sensorSleepInterval, sensorSampleNumber);
     }
 
     else if (message == "Sensor_Values") {
@@ -603,7 +603,7 @@ void unpackageMessage(char* payload) {
 /*
  * Package the local data for Output Messages
  */
-char* packageMessage(char* message, int sleep, int samples) {
+void sendMessage(char* message, int sleep, int samples) {
   StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
 
   JsonObject& root = jsonBuffer.createObject();
@@ -617,22 +617,13 @@ char* packageMessage(char* message, int sleep, int samples) {
   char buffer[root.measureLength() + 1];
   root.printTo(buffer, sizeof(buffer));
 
-  return buffer;
-}
-
-
-/*
- * Sends the packaged message to Serail & UDP 
- */
-void sendMessage(char* package) {
-
   // Send over serial
-  Serial.println("Sending " + String(strlen(package)) + " bytes ");
-  Serial.println(package);
+  Serial.println("Sending " + String(sizeof(buffer)) + " bytes ");
+  Serial.println(buffer);
   Serial.println();
 
   // Send over UDP
   udp.beginPacket(ClientIP, udp_port);
-  udp.write(package);
+  udp.write(buffer, sizeof(buffer));
   udp.endPacket();
 }
