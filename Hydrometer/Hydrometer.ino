@@ -43,7 +43,7 @@
 
 
 // TEST ENABLES
-#define TEST_ENABLE_TEST_DATA true
+#define TEST_ENABLE_TEST_DATA false
 #define TEST_DISABLE_SLEEP    false
 
 
