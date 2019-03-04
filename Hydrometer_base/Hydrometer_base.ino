@@ -540,7 +540,7 @@ void drawMainScreenValuesSD() {
     tft.fillRect(10, 105, 225, 80, ILI9341_BLACK);
     tft.setTextSize(2);
     tft.setFont(&FreeSerifItalic24pt7b);
-    dtostrf(lastElement,5, 3, strBuff);
+    dtostrf(lastElement,5, 3, strBuff);              // Current SG
     drawStrings(10, 175, strBuff);
     tft.setFont();
     tft.setTextSize(1);
@@ -548,7 +548,7 @@ void drawMainScreenValuesSD() {
 
 
     // Original SG
-    dtostrf(prevElement,5, 3, strBuff);
+    dtostrf(firstElement,5, 3, strBuff);
     drawStrings(100, 194, strBuff);
 
     // Current ABV
@@ -952,13 +952,12 @@ void unpackageMessage(char* payload) {
 
       addDataSG();                                                  // Log new data into data.txt on the SD card
       updateDataCount();                                            // update dataCount variable with number of elements in data.txt
-      updateABV();                                                  // Update Alcohol by Volume variable
       
       firstElement = seekElement(1);                                // Update original SG reading
       lastElement = seekElement(dataCount);                         // Update current SG reading
       prevElement= seekElement(dataCount - 1);                      // Update previous SG reading
-      drawMainScreenValuesSD();
-      
+      updateABV();                                                  // Update Alcohol by Volume variable
+      drawMainScreenValuesSD();     
       
       Serial.printf("[Update Accel] Accel_x: %f, Accel_y: %f, Accel_z: %f \n", sensorAccel_x, sensorAccel_y, sensorAccel_z);
       Serial.printf("[Update Accel] Accel_cx: %f, Accel_cy: %f, Accel_cz: %f \n\n", sensorAccel_cx, sensorAccel_cy, sensorAccel_cz);
@@ -1020,7 +1019,7 @@ void sendMessage(char* message, int sleep, int samples) {
 float sgCalc(float x, float y, float z){
   float valRads = atan2(z,sqrt(sq(x) + sq(y))); // atan of y/x returns in radians
   float valDegs = valRads * 57296 / 1000;       // convert to degrees
-  float sg = -0.000381*(valDegs*valDegs) + (0.050828*valDegs) - 0.601579; 
+  float sg = -0.000381*(valDegs*valDegs) + (0.050828*valDegs) - 0.601579;
   return sg;
 }
 
@@ -1053,8 +1052,8 @@ void addDataSG(){
   // make a string for assembling the data to log:
   String dataString = "";
 
-  // append data to the string
-  dataString += String(sgCalc(sensorAccel_cx, sensorAccel_cy, sensorAccel_cz));
+  // append data to the string to 3 decimals
+  dataString += String(sgCalc(sensorAccel_cx, sensorAccel_cy, sensorAccel_cz), 3);
 
   // open the file
   File dataFile = SD.open("data.txt", FILE_WRITE);
@@ -1062,7 +1061,6 @@ void addDataSG(){
   // if the file is available, write to it:
   if (dataFile) {
     dataFile.println(dataString);   
-    dataCount++; // upon restart this will no longer be accurate (stored in ram, data in flash)
     dataFile.close();
   }
   // if the file isn't open, pop up an error:
