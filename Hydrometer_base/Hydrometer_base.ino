@@ -47,8 +47,7 @@
 
 /**************************** DEFINITIONS AND VARIABLES ********************************/
 // DEFINE FIRMWARE
-#define FIRMWARE_VERSION 1
-
+#define FIRMWARE_VERSION 2
 
 // DEFINE ESP TO ESP WIFI CREDENTIALS
 #define udp_name           "hydrometer"
@@ -79,6 +78,7 @@ int sensorSleepInterval = 30;    // Default sleep interval in seconds
 int sensorSampleNumber = 0;      // Default number of samples
 
 // screen variables
+bool enableScreenSD = true;
 bool touchActive = false;        // Prevent double screen shift
 bool refresh = true;             // refresh full screen, (screen changes)
 int screenCount = 3;             // Total number of screens
@@ -122,12 +122,16 @@ void setup() {
   Serial.print("Initializing SD card...");
   if (!SD.begin(SD_CS)) {
     Serial.println("failed!");
-    return;
+    enableScreenSD = false;
   }
   Serial.println("Initialization done.");
 
   // Splash Screen 2 second
-  drawSplashScreen(2);
+  if (enableScreenSD) {
+    drawSplashScreenSD(2);
+  } else {
+    drawSplashScreen(2);
+  }
 
   Serial.println("Start WiFi Access Point");
   WiFi.mode(WIFI_AP);
@@ -151,7 +155,11 @@ void setup() {
 void loop() {
 
   // Check for screen touch
-  checkButtonTouch();
+  if (enableScreenSD) {
+    checkButtonTouchSD();
+  } else {
+    checkButtonTouch();
+  }
 
   // Check for serial input
   checkSerialReceived();
@@ -162,11 +170,25 @@ void loop() {
   // Check that the sensor has not timed out
   checkSensorState();
 
+
   // draw screen
-  if (screen == 0) {
-    drawMainScreen();
-  } else if (screen == 1) {
-    drawSettingsScreen();
+  if (enableScreenSD) {
+    // Draw SD Card Screens
+    if (screen == 0) {
+      drawMainScreenSD();
+    } else if (screen == 1) {
+      drawSettingsScreenSD();
+    }
+  
+  } else {
+    // Draw NON SD Card Screens
+    if (screen == 0) {
+      drawButtons();
+    } else if (screen == 1) {
+      drawAbout();
+    } else if (screen == 2) {
+      drawSensorValues();
+    }  
   }
 
 }
@@ -216,33 +238,92 @@ void checkSensorState() {
   } else {
     sensorConnected = false;
   }
-  drawMainScreenSensorLast();
+  if (enableScreenSD) {
+    drawMainScreenSensorLastSD();
+  }
 }
-
 
 
 
 
 /*
  * Detect which button was pressed
+ * NON SD Sreen
  */
 void checkButtonTouch() {
+  if (ts.touched()) {
+    refresh = true;
+    if (!touchActive) {
+      touchActive = true;
+      TS_Point a = ts.getPoint();
+      Serial.println(a.x);
+
+      // Screen 0 is divided into 6 buttons, bottom two are not used
+      if (screen == 0) {
+        if (a.x >= 3250 && a.x <= 3700) {
+          Serial.println("Button 1, Standby Button Pressed");
+          stateStandby();
+        }
+        if (a.x >= 2700 && a.x <= 3150) {
+          Serial.println("Button 2, Fermentation Button Pressed");
+          stateFermentation();
+        }
+        if (a.x >= 2090 && a.x <= 2580) {
+          Serial.println("Button 3, Calibration Button Pressed");
+          stateCalibration();
+        }
+        if (a.x >= 1550 && a.x <= 2010) {
+          Serial.println("Button 4, About Button Pressed");
+          screen = 1;
+        }
+        if (a.x >= 960 && a.x <= 1450) {
+          Serial.println("Button 5, Data Button Pressed");
+          screen = 2;
+        }
+        if (a.x >= 350 && a.x <= 910) {
+          Serial.println("Button 6");
+        }
+
+      // Screen 1 only has the bottom button
+      } else if (screen == 1) {
+        if (a.x >= 350 && a.x <= 910) {
+          Serial.println("Button 6");
+          screen = 0;
+        }
+
+      // Screen 2 only has the bottom button
+      } else if (screen == 2) {
+        if (a.x >= 0350 && a.x <= 910) {
+          Serial.println("Button 6");
+          screen = 0;
+        }
+      }
+      tft.fillScreen(ILI9341_BLACK);
+      refresh = true;
+
+    } else {
+      touchActive = false;
+    }
+  }
+}
+
+
+/*
+ * Detect which button was pressed
+ * SD Screen
+ */
+void checkButtonTouchSD() {
   int screenOld = screen;
   if (ts.touched()) {
     if (!touchActive) {
       touchActive = true;
       TS_Point a = ts.getPoint();
-      Serial.print("Screen Touched (");
-      Serial.print(a.x);
-      Serial.print(",");
-      Serial.print(a.y);
-      Serial.println(")");
 
       if (screen == 0) {
-        mainScreenTouch(a.x, a.y);
+        mainScreenTouchSD(a.x, a.y);
       } else
       if (screen == 1) {
-        settingsScreenTouch(a.x, a.y);
+        settingsScreenTouchSD(a.x, a.y);
       }
 
       if (screen != screenOld) {
@@ -262,7 +343,7 @@ void checkButtonTouch() {
  * Inputs the x,y touch
  * Defines the area for each button
  */
-void mainScreenTouch(int x, int y) {
+void mainScreenTouchSD(int x, int y) {
   // Settings Button Touch
   if (x >= 3500 && x <= 3900 && y >= 200 && y <= 900) {
     Serial.println("Main Screen, Settings Button Touched");
@@ -284,8 +365,7 @@ void mainScreenTouch(int x, int y) {
  * Inputs the x,y touch
  * Defines the area for each button
  */
-void settingsScreenTouch(int x, int y) {
-  drawSettingsScreen();
+void settingsScreenTouchSD(int x, int y) {
   // Exit Button Touch (3500-3900,200-900)
   if (x >= 3500 && x <= 3900 && y >= 200 && y <= 900) {
     Serial.println("Settings Screen, Exit Button Touched");
@@ -401,12 +481,16 @@ void checkScreenSwipe() {
 
 
 
-/**************************** SCREEN DRAW FUNCTIONS **********************************/
+
+
+
+/****************************SD SCREEN DRAW FUNCTIONS **********************************/
 
 /*
  * Display splash screen 
+ * SD Screen
  */
-void drawSplashScreen(int seconds) {
+void drawSplashScreenSD(int seconds) {
   Serial.println("Start Screen Splash Screen");
   reader.drawBMP("/splash.BMP", tft, 0, 0);
   delay((seconds * 1000));
@@ -417,8 +501,9 @@ void drawSplashScreen(int seconds) {
 /*
  * Display Main Screen
  * Gets the images from sd card using Adafruit_ImageReader objext
+ * SD Screen
  */
-void drawMainScreen() {
+void drawMainScreenSD() {
   if (refresh) {
     tft.fillScreen(ILI9341_BLACK);
     reader.drawBMP("/Ferm.bmp", tft, 8, 8);
@@ -431,11 +516,12 @@ void drawMainScreen() {
     reader.drawBMP("/OrigSG.bmp", tft, 10, 190);
     reader.drawBMP("/CurABV.bmp", tft, 10, 210);
     reader.drawBMP("/Update.bmp", tft, 10, 235);
-    reader.drawBMP("/BATT100.bmp", tft, 25, 254);
-    reader.drawBMP("/SIG100.bmp", tft, 125, 250);
+    reader.drawBMP("/BATT100.bmp", tft, 20, 254);
+    reader.drawBMP("/SIG100.bmp", tft, 95, 250);
+    reader.drawBMP("/SIG100.bmp", tft, 160, 250);              //TODO update for Interval
     reader.drawBMP("/START.bmp", tft, 10, 275);                //TODO Input Value
 
-    drawMainScreenValues();
+    drawMainScreenValuesSD();
   }
   refresh = false;
 
@@ -445,8 +531,9 @@ void drawMainScreen() {
 /*
  * Display Main Screen Values
  * Updates only the values and important information, minimizes re-draw time
+ * SD Screen
  */
-void drawMainScreenValues() {
+void drawMainScreenValuesSD() {
     char strBuff[10];
 
     tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
@@ -470,29 +557,34 @@ void drawMainScreenValues() {
 
     // Sensor Last Update
     tft.fillRect(148, 233, 50, 10, ILI9341_BLACK);
-    drawMainScreenSensorLast();
+    drawMainScreenSensorLastSD();
 
     // Sensor Battery
     //reader.drawBMP("/BATT100.bmp", tft, 25, 254);                         // Posible dynamic image
-    tft.fillRect(48, 257, 50, 10, ILI9341_BLACK);
-    drawStrings(50, 258, String(sensorBattery));
+    tft.fillRect(43, 257, 40, 10, ILI9341_BLACK);
+    drawStrings(45, 258, String(sensorBattery) + " V");
 
     // Sensor Signal
     //reader.drawBMP("/SIG100.bmp", tft, 125, 250);                         // Posible dynamic image
-    tft.fillRect(148, 257, 50, 10, ILI9341_BLACK);
-    drawStrings(150, 258, String(sensorSignal));
+    tft.fillRect(118, 257, 35, 10, ILI9341_BLACK);
+    drawStrings(120, 258, String(sensorSignal) + " %");
+
+    // Sensor Interval
+    tft.fillRect(183, 257, 35, 10, ILI9341_BLACK);
+    drawStrings(185, 258, String(sensorSleepInterval) + " SEC");
 }
 
 
 /*
  * Display Main Screen Values
  * Print out the sensor connected update time
+ * SD Screen
  */
-void drawMainScreenSensorLast() {
+void drawMainScreenSensorLastSD() {
   if (sensorConnected) {
     // Sensor Last Update
     if (screen == 0) {
-      drawStrings(150, 238, String((millis() - (sensorLastUpdate*1000))/1000) + " SEC");
+      drawStrings(150, 238, String((millis() - (sensorLastUpdate*1000))/1000) + " SEC         ");
     }
   } else {
     if (screen == 0) {
@@ -507,8 +599,9 @@ void drawMainScreenSensorLast() {
 /*
  * Display Settings Screen 
  * Gets the images from sd card using Adafruit_ImageReader objext
+ * SD Screen
  */
-void drawSettingsScreen() {
+void drawSettingsScreenSD() {
   if (refresh) {
     tft.fillScreen(ILI9341_BLACK);
 
@@ -552,7 +645,7 @@ void drawSettingsScreen() {
   }
   refresh = false;
 
-  drawSettingsScreenValues();
+  drawSettingsScreenValuesSD();
 }
 
 
@@ -560,8 +653,9 @@ void drawSettingsScreen() {
 /*
  * Display Main Screen Values
  * Updates only the values and important information, minimizes re-draw time
+ * SD Screen
  */
-void drawSettingsScreenValues() {
+void drawSettingsScreenValuesSD() {
   
 }
 
@@ -587,6 +681,28 @@ void drawLabelValue(int line, String label, String value) {
   drawStrings(labelX, 30 + line * 15, label);
   tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
   drawStrings(valueX, 30 + line * 15, value);
+}
+
+
+/**************************** NON SD SCREEN DRAW FUNCTIONS **********************************/
+
+/*
+ * Display splash screen 
+ * NON SD Screen
+ */
+void drawSplashScreen(int seconds) {
+  Serial.println("Start Screen Splash Screen");
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setCursor(0, 0);
+  tft.setTextColor(ILI9341_RED);
+  tft.setTextSize(4);
+  tft.println();
+  tft.println();
+  tft.println("Hydrometer");
+  tft.println();
+  tft.setTextColor(ILI9341_GREEN);
+  delay((seconds * 1000));
+  tft.fillScreen(ILI9341_BLACK);
 }
 
 
@@ -813,7 +929,6 @@ void unpackageMessage(char* payload) {
   // Test if parsing succeeds.
   if (root.success()) {
     sensorLastUpdate = millis()/1000;
-    drawMainScreenValues();
 
     // Unpack message name
     String message = root["message"];
@@ -842,7 +957,7 @@ void unpackageMessage(char* payload) {
       firstElement = seekElement(1);                                // Update original SG reading
       lastElement = seekElement(dataCount);                         // Update current SG reading
       prevElement= seekElement(dataCount - 1);                      // Update previous SG reading
-
+      drawMainScreenValuesSD();
       
       
       Serial.printf("[Update Accel] Accel_x: %f, Accel_y: %f, Accel_z: %f \n", sensorAccel_x, sensorAccel_y, sensorAccel_z);
