@@ -1,28 +1,22 @@
 /*  Hydrometer Tilt Base Station
     ESP8266 D1 Mini
     2.4 TFT Touchscreen
-
    ChangeLog
    01/22/2019
-
    Inital setup,
    OTA function, with manual override loop in setup, redirects wifi connection to home wifi
    UDP communication client for connecting and sending data to the host ESP
    Accelerometer integration using MMA8452 library
-
    01/27/2019
    Added specific messaging
    Added screen functionality and control
    Added Serial commands and control
-
    01/28/2019 - REV 2
    Commented CODE and Reorginized
    
    02/25/2019
    Updated screen to new format, need to add original screen function back in for backwards compatibility
    TO DO: Add sd card detection
-
-
    TO DO
    Add message error checking, Call and Responce
    Improve touch detection
@@ -32,7 +26,6 @@
    Save data to SD card
    Add HTTP Web interface
    Add AP_STA, connect to internet
-
 */
 
 
@@ -48,6 +41,8 @@
 #include <XPT2046_Touchscreen.h>
 #include <SPI.h>
 #include <SD.h>
+#include <math.h>
+
 
 
 /**************************** DEFINITIONS AND VARIABLES ********************************/
@@ -79,7 +74,7 @@ ADC_MODE(ADC_VCC);
 const int BUFFER_SIZE = 512;     // Buffer used to for packaging message JSON
 char* commandState = "Standby";  // Default state (Standby, Fermentation, Calibration)
 bool sensorConnected = false;
-int sensorLastUpdate = -1;
+int sensorLastUpdate = -10000;
 int sensorSleepInterval = 30;    // Default sleep interval in seconds
 int sensorSampleNumber = 0;      // Default number of samples
 
@@ -90,9 +85,6 @@ int screenCount = 3;             // Total number of screens
 int screen = 0;                  // Inital screen on startup
 
 // sensor variables 
-/*
- * Changed these to signed ints- uses 2 bytes instead of 4 per float. NG
- */
 float sensorAccel_x;
 float sensorAccel_y;
 float sensorAccel_z;
@@ -108,6 +100,15 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 XPT2046_Touchscreen ts(TOUCH_CS);
 Adafruit_ImageReader reader;
 
+// SG DATA INITIALIZATION VARIABLES
+float firstElement = 0;                                   // First reading
+float lastElement = 0;                                    // Currenet SG reading
+float prevElement = 0;                                    // Previous SG reading
+float abv = 0;                                            // Alcohol by Volume variable
+
+// SD CARD
+int dataCount = 0;
+
 /********************************** START SETUP ****************************************/
 void setup() {
   Serial.begin(115200);
@@ -121,9 +122,9 @@ void setup() {
   Serial.print("Initializing SD card...");
   if (!SD.begin(SD_CS)) {
     Serial.println("failed!");
+    return;
   }
-  Serial.println("OK!");
-
+  Serial.println("Initialization done.");
 
   // Splash Screen 2 second
   drawSplashScreen(2);
@@ -426,30 +427,12 @@ void drawMainScreen() {
 
     // Status Tag
     reader.drawBMP("/ReadyS.bmp", tft, 105, 45);               //TODO Tag based on status
-
-
     reader.drawBMP("/CurSG.bmp", tft, 10, 90);
-    tft.setTextSize(2);
-    tft.setFont(&FreeSerifItalic24pt7b);
-    drawStrings(10, 175, "8.888");                             //TODO Input Value
-    tft.setFont();
-    tft.setTextSize(1);
-
-
-
     reader.drawBMP("/OrigSG.bmp", tft, 10, 190);
-    drawStrings(100, 194, "8.888");                 //TODO Input Value
-
     reader.drawBMP("/CurABV.bmp", tft, 10, 210);
-    drawStrings(100, 213, "100");                 //TODO Input Value
-
     reader.drawBMP("/Update.bmp", tft, 10, 235);
     reader.drawBMP("/BATT100.bmp", tft, 25, 254);
-    drawStrings(50, 258, "100%");                              //TODO Input Value
-
     reader.drawBMP("/SIG100.bmp", tft, 125, 250);
-    drawStrings(150, 258, "100%");                             //TODO Input Value
-
     reader.drawBMP("/START.bmp", tft, 10, 275);                //TODO Input Value
 
     drawMainScreenValues();
@@ -464,35 +447,40 @@ void drawMainScreen() {
  * Updates only the values and important information, minimizes re-draw time
  */
 void drawMainScreenValues() {
+    char strBuff[10];
+
     tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
     tft.fillRect(10, 105, 225, 80, ILI9341_BLACK);
     tft.setTextSize(2);
     tft.setFont(&FreeSerifItalic24pt7b);
-    drawStrings(10, 175, "8.888");                             //TODO Input Value
+    dtostrf(lastElement,5, 3, strBuff);
+    drawStrings(10, 175, strBuff);
     tft.setFont();
     tft.setTextSize(1);
 
 
 
     // Original SG
-    drawStrings(100, 194, "8.888");                 //TODO Input Value
+    dtostrf(prevElement,5, 3, strBuff);
+    drawStrings(100, 194, strBuff);
 
     // Current ABV
-    drawStrings(100, 213, "100");                 //TODO Input Value
+    dtostrf(abv,7, 3, strBuff);
+    drawStrings(100, 213, strBuff);
 
     // Sensor Last Update
     tft.fillRect(148, 233, 50, 10, ILI9341_BLACK);
     drawMainScreenSensorLast();
 
     // Sensor Battery
-    reader.drawBMP("/BATT100.bmp", tft, 25, 254);
+    //reader.drawBMP("/BATT100.bmp", tft, 25, 254);                         // Posible dynamic image
     tft.fillRect(48, 257, 50, 10, ILI9341_BLACK);
-    drawStrings(50, 258, String(sensorBattery));                              //TODO Input Value
+    drawStrings(50, 258, String(sensorBattery));
 
     // Sensor Signal
-    reader.drawBMP("/SIG100.bmp", tft, 125, 250);
+    //reader.drawBMP("/SIG100.bmp", tft, 125, 250);                         // Posible dynamic image
     tft.fillRect(148, 257, 50, 10, ILI9341_BLACK);
-    drawStrings(150, 258, String(sensorSignal));                             //TODO Input Value
+    drawStrings(150, 258, String(sensorSignal));
 }
 
 
@@ -503,9 +491,15 @@ void drawMainScreenValues() {
 void drawMainScreenSensorLast() {
   if (sensorConnected) {
     // Sensor Last Update
-    drawStrings(150, 234, String((millis() - (sensorLastUpdate*1000))/1000) + " SEC");
+    if (screen == 0) {
+      drawStrings(150, 238, String((millis() - (sensorLastUpdate*1000))/1000) + " SEC");
+    }
   } else {
-    drawStrings(150, 234, "Not Connected");
+    if (screen == 0) {
+      drawStrings(150, 238, "Not Connected");
+      sensorBattery = 0;
+      sensorSignal = 0;
+    }
   }
 }
 
@@ -777,10 +771,8 @@ void checkSerialReceived() {
     delay(10); // wait for all serial data
     int serialSize = Serial.available();
     String serialMessage = Serial.readString();
-
     char serialMessageBuffer[serialMessage.length()];
     serialMessage.toCharArray(serialMessageBuffer, serialMessage.length());
-
     sendMessage(serialMessageBuffer);
     }
   */
@@ -842,8 +834,21 @@ void unpackageMessage(char* payload) {
       sensorAccel_cx = root["accel.cx"];
       sensorAccel_cy = root["accel.cy"];
       sensorAccel_cz = root["accel.cz"];
+
+      addDataSG();                                                  // Log new data into data.txt on the SD card
+      updateDataCount();                                            // update dataCount variable with number of elements in data.txt
+      updateABV();                                                  // Update Alcohol by Volume variable
+      
+      firstElement = seekElement(1);                                // Update original SG reading
+      lastElement = seekElement(dataCount);                         // Update current SG reading
+      prevElement= seekElement(dataCount - 1);                      // Update previous SG reading
+
+      
+      
       Serial.printf("[Update Accel] Accel_x: %f, Accel_y: %f, Accel_z: %f \n", sensorAccel_x, sensorAccel_y, sensorAccel_z);
       Serial.printf("[Update Accel] Accel_cx: %f, Accel_cy: %f, Accel_cz: %f \n\n", sensorAccel_cx, sensorAccel_cy, sensorAccel_cz);
+      
+      Serial.printf("[Update SG Values] firstElement: %f, lastElement: %f, : %f \n\n", firstElement, lastElement, prevElement);
     }
 
     else if (message == "Disconnected") {
@@ -892,4 +897,107 @@ void sendMessage(char* message, int sleep, int samples) {
   udp.beginPacket(ClientIP, udp_port);
   udp.write(buffer, sizeof(buffer));
   udp.endPacket();
+}
+
+/******************************* FERMENTATION MONITORING FUNCTIONS *************************************/
+
+// Convert accelerometer data into specific gravity reading
+float sgCalc(float x, float y, float z){
+  float valRads = atan2(z,sqrt(sq(x) + sq(y))); // atan of y/x returns in radians
+  float valDegs = valRads * 57296 / 1000;       // convert to degrees
+  float sg = -0.000381*(valDegs*valDegs) + (0.050828*valDegs) - 0.601579; 
+  return sg;
+}
+
+
+
+// Update Alcohol by Volume variable
+void updateABV(){ 
+  abv = 131.25 * (firstElement - lastElement); // 131.25*(OG - FG)
+}
+
+
+
+
+// NEED TO UPDATE
+int fermStatus(){
+  int flag = 0;
+  int dif = 10;
+  
+  if (abs(lastElement - prevElement) < dif ){
+    flag = 1;
+  }
+  return flag;
+}
+
+
+
+
+// Datalogger function: add calculated SG value to file in SD card
+void addDataSG(){
+  // make a string for assembling the data to log:
+  String dataString = "";
+
+  // append data to the string
+  dataString += String(sgCalc(sensorAccel_cx, sensorAccel_cy, sensorAccel_cz));
+
+  // open the file
+  File dataFile = SD.open("data.txt", FILE_WRITE);
+  
+  // if the file is available, write to it:
+  if (dataFile) {
+    dataFile.println(dataString);   
+    dataCount++; // upon restart this will no longer be accurate (stored in ram, data in flash)
+    dataFile.close();
+  }
+  // if the file isn't open, pop up an error:
+  else {
+    Serial.println("error opening datalog.txt");
+  }
+}
+
+
+
+// Seeks the nth element of the data file on SD card (first element is '1')
+float seekElement(int elem){
+  File dataFile = SD.open("data.txt");
+  float element = 0;  
+  int recNum = 0;
+  if(dataFile){
+    dataFile.seek(0);
+    while(dataFile.available()){
+      String s = dataFile.readStringUntil('\n');
+      recNum++;
+      if(recNum == elem){
+        element = s.toFloat();  // update the variable
+        break;
+      }
+    }
+  }
+  else {
+    Serial.println("error opening the file (lastElem)");
+  }
+  dataFile.close();
+  return element;
+}
+
+
+
+
+// Updates the dataCount variable with total number of elements in data.txt
+void updateDataCount(){
+  int elems = 0;
+  File dataFile = SD.open("data.txt");
+  if (dataFile){
+    dataFile.seek(0);
+    while (dataFile.available()){
+      String s = dataFile.readStringUntil('\n');
+      elems++;
+    }
+  }
+  else {
+    Serial.println("error opening the file (updateDataCount)");
+  }
+  dataFile.close();
+  dataCount = elems; 
 }
