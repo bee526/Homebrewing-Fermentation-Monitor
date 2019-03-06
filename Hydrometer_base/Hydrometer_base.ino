@@ -102,12 +102,19 @@ Adafruit_ImageReader reader;
 
 // SG DATA INITIALIZATION VARIABLES
 float firstElement = 0;                                   // First reading
-float lastElement = 0;                                    // Currenet SG reading
-float prevElement = 0;                                    // Previous SG reading
+float currentElement = 0;                                 // Currenet SG reading
+float fermDataOne = 0;                                    // 1-6: new-old  
+float fermDataTwo = 0;
+float fermDataThree = 0;
+float fermDataFour = 0;
+float fermDataFive = 0;
+float fermDataSix = 0;
+int dataCount = 0;
+
+// FERMENTATION MONITOR VARIABLES
+bool fermStatus = false;                                  // false = display "in progress", true = display "complete"
 float abv = 0;                                            // Alcohol by Volume variable
 
-// SD CARD
-int dataCount = 0;
 
 /********************************** START SETUP ****************************************/
 void setup() {
@@ -540,7 +547,7 @@ void drawMainScreenValuesSD() {
     tft.fillRect(10, 105, 225, 80, ILI9341_BLACK);
     tft.setTextSize(2);
     tft.setFont(&FreeSerifItalic24pt7b);
-    dtostrf(lastElement,5, 3, strBuff);              // Current SG
+    dtostrf(currentElement,5, 3, strBuff);              // Current SG
     drawStrings(10, 175, strBuff);
     tft.setFont();
     tft.setTextSize(1);
@@ -950,19 +957,24 @@ void unpackageMessage(char* payload) {
       sensorAccel_cy = root["accel.cy"];
       sensorAccel_cz = root["accel.cz"];
 
-      addDataSG();                                                  // Log new data into data.txt on the SD card
+      addDataSG();                                                  // Convert data to SG and append to file on the SD card
       updateDataCount();                                            // update dataCount variable with number of elements in data.txt
       
       firstElement = seekElement(1);                                // Update original SG reading
-      lastElement = seekElement(dataCount);                         // Update current SG reading
-      prevElement= seekElement(dataCount - 1);                      // Update previous SG reading
+      currentElement = seekElement(dataCount);                      // Update current SG reading
+      fermDataOne = seekElement(dataCount - 1);
+      fermDataTwo = seekElement(dataCount - 2);
+      fermDataThree = seekElement(dataCount - 3);
+      fermDataFour = seekElement(dataCount - 4);
+      fermDataFive = seekElement(dataCount - 5);
+      fermDataSix = seekElement(dataCount - 6);
+      
+      updateFermStatus();                                           // Update bool fermStatus, if false display "in progress", if true display "complete"
       updateABV();                                                  // Update Alcohol by Volume variable
       drawMainScreenValuesSD();     
       
       Serial.printf("[Update Accel] Accel_x: %f, Accel_y: %f, Accel_z: %f \n", sensorAccel_x, sensorAccel_y, sensorAccel_z);
       Serial.printf("[Update Accel] Accel_cx: %f, Accel_cy: %f, Accel_cz: %f \n\n", sensorAccel_cx, sensorAccel_cy, sensorAccel_cz);
-      
-      Serial.printf("[Update SG Values] firstElement: %f, lastElement: %f, : %f \n\n", firstElement, lastElement, prevElement);
     }
 
     else if (message == "Disconnected") {
@@ -1024,27 +1036,24 @@ float sgCalc(float x, float y, float z){
 }
 
 
-
 // Update Alcohol by Volume variable
 void updateABV(){ 
-  abv = 131.25 * (firstElement - lastElement); // 131.25*(OG - FG)
+  abv = 131.25 * (firstElement - currentElement); // 131.25*(OG - FG)
 }
 
 
-
-
-// NEED TO UPDATE
-int fermStatus(){
-  int flag = 0;
-  int dif = 10;
-  
-  if (abs(lastElement - prevElement) < dif ){
-    flag = 1;
+// Main fermentation Monitoring Function
+void updateFermStatus(){
+  if (dataCount > 22){
+    float threshold = 0.002;
+    float avgFermData = (fermDataOne + fermDataTwo + fermDataThree + fermDataFour + fermDataFive + fermDataSix) / 6; 
+    if (abs(currentElement - avgFermData) < threshold ){
+      fermStatus = true;              // if true display "complete"
+    } else {
+      fermStatus = false;             // if false display "in progress"
+    }
   }
-  return flag;
 }
-
-
 
 
 // Datalogger function: add calculated SG value to file in SD card
@@ -1052,7 +1061,7 @@ void addDataSG(){
   // make a string for assembling the data to log:
   String dataString = "";
 
-  // append data to the string to 3 decimals
+  // Convert raw data to SG and append to the string to 3 decimals
   dataString += String(sgCalc(sensorAccel_cx, sensorAccel_cy, sensorAccel_cz), 3);
 
   // open the file
@@ -1068,7 +1077,6 @@ void addDataSG(){
     Serial.println("error opening datalog.txt");
   }
 }
-
 
 
 // Seeks the nth element of the data file on SD card (first element is '1')
@@ -1093,8 +1101,6 @@ float seekElement(int elem){
   dataFile.close();
   return element;
 }
-
-
 
 
 // Updates the dataCount variable with total number of elements in data.txt
