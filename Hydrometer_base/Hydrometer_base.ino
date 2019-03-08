@@ -1141,20 +1141,23 @@ void unpackageMessage(char* payload) {
       sensorAccel_cy = root["accel.cy"];
       sensorAccel_cz = root["accel.cz"];
 
-      addDataSG();                                                  // Convert data to SG and append to file on the SD card
-      updateDataCount();                                            // update dataCount variable with number of elements in data.txt
+      if (commandState == "Fermentation"){                            // Only update when in fermentation mode, otherwise display default or last logged values
+        addDataSG();                                                  // Convert data to SG and append to file on the SD card
+        updateDataCount();                                            // update dataCount variable with number of elements in data.txt
       
-      firstElement = seekElement(1);                                // Update original SG reading
-      currentElement = seekElement(dataCount);                      // Update current SG reading
-      fermDataOne = seekElement(dataCount - 1);
-      fermDataTwo = seekElement(dataCount - 2);
-      fermDataThree = seekElement(dataCount - 3);
-      fermDataFour = seekElement(dataCount - 4);
-      fermDataFive = seekElement(dataCount - 5);
-      fermDataSix = seekElement(dataCount - 6);
+        firstElement = seekElement(1);                                // Update original SG reading
+        currentElement = seekElement(dataCount);                      // Update current SG reading
+        fermDataOne = seekElement(dataCount - 1);
+        fermDataTwo = seekElement(dataCount - 2);
+        fermDataThree = seekElement(dataCount - 3);
+        fermDataFour = seekElement(dataCount - 4);
+        fermDataFive = seekElement(dataCount - 5);
+        fermDataSix = seekElement(dataCount - 6);
       
-      updateFermStatus();                                           // Update bool fermStatus, if false display "in progress", if true display "complete"
-      updateABV();                                                  // Update Alcohol by Volume variable
+        updateFermStatus();                                           // Update bool fermStatus, if false display "in progress", if true display "complete"
+        updateABV();                                                  // Update Alcohol by Volume variable
+      }
+      
       sensorLastUpdate = millis()/1000;
       if (enableScreenSD) {
         drawMainScreenValuesSD();     
@@ -1232,9 +1235,9 @@ void updateABV(){
 // Main fermentation Monitoring Function
 void updateFermStatus(){
   if (dataCount > 22){
-    float threshold = 0.002;
+    float threshold = 0.0035;
     float avgFermData = (fermDataOne + fermDataTwo + fermDataThree + fermDataFour + fermDataFive + fermDataSix) / 6; 
-    if (abs(currentElement - avgFermData) < threshold ){
+    if (fabs(currentElement - avgFermData) < threshold ){
       fermStatus = true;              // if true display "complete"
     } else {
       fermStatus = false;             // if false display "in progress"
