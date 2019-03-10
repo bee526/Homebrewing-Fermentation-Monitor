@@ -78,13 +78,13 @@ bool sensorConnected = false;
 int sensorLastUpdate = -10000;
 int sensorSleepInterval = 30;    // Default sleep interval in seconds
 int sensorSleepIntStdby = 30;    // Standby interval = 30 seconds
-int sensorSleepIntFerm = 7200;   // Fermentation interval = 2 hours
+int sensorSleepIntFerm = 10;   // Fermentation interval = 2 hours
 int sensorSleepIntStdbySet = 30;
 int sensorSleepIntFermSet = 7200;
 int sensorSampleNumber = 0;      // Default number of samples
 
 // screen variables
-#define ENABLE_SETTINGS_SCREEN false
+#define ENABLE_SETTINGS_SCREEN true
 bool enableScreenSD = true;
 bool touchActive = false;        // Prevent double screen shift
 int touchLast = 0;               // Slow down button touch
@@ -255,8 +255,10 @@ void checkStateChange() {
     statusStateLast = statusState;
 
     // Update Status and button
-    drawMainScreenStatusSD();
-    drawMainScreenButtonSD();
+    if (enableScreenSD && screen == 0) {
+      drawMainScreenStatusSD();
+      drawMainScreenButtonSD();
+    }
   }
 }
 
@@ -447,9 +449,9 @@ void settingsScreenTouchSD(int x, int y) {
     }
 
     if ( sensorSleepIntStdbySet == sensorSleepIntStdby ) {
-      reader.drawBMP("/SetG.bmp", tft, 190, 60);
+      reader.drawBMP("/ICONS/SetG.bmp", tft, 190, 60);
     } else {
-      reader.drawBMP("/SetR.bmp", tft, 190, 60);
+      reader.drawBMP("/ICONS/SetR.bmp", tft, 190, 60);
     }
   }
 
@@ -466,9 +468,9 @@ void settingsScreenTouchSD(int x, int y) {
     }
 
     if ( sensorSleepIntStdbySet == sensorSleepIntStdby ) {
-      reader.drawBMP("/SetG.bmp", tft, 190, 60);
+      reader.drawBMP("/ICONS/SetG.bmp", tft, 190, 60);
     } else {
-      reader.drawBMP("/SetR.bmp", tft, 190, 60);
+      reader.drawBMP("/ICONS/SetR.bmp", tft, 190, 60);
     }
   }
 
@@ -479,7 +481,7 @@ void settingsScreenTouchSD(int x, int y) {
     if (commandState == "Standby") {
       sensorSleepInterval = sensorSleepIntStdby;
     }
-    reader.drawBMP("/SetG.bmp", tft, 190, 60);
+    reader.drawBMP("/ICONS/SetG.bmp", tft, 190, 60);
   }
 
   // ROW2COL1 Button Touch (1950-2550,3100-3850)
@@ -495,9 +497,9 @@ void settingsScreenTouchSD(int x, int y) {
     }
 
     if ( sensorSleepIntFermSet == sensorSleepIntFerm ) {
-      reader.drawBMP("/SetG.bmp", tft, 190, 130);
+      reader.drawBMP("/ICONS/SetG.bmp", tft, 190, 130);
     } else {
-      reader.drawBMP("/SetR.bmp", tft, 190, 130);
+      reader.drawBMP("/ICONS/SetR.bmp", tft, 190, 130);
     }
   }
 
@@ -514,9 +516,9 @@ void settingsScreenTouchSD(int x, int y) {
     }
 
     if ( sensorSleepIntFermSet == sensorSleepIntFerm ) {
-      reader.drawBMP("/SetG.bmp", tft, 190, 130);
+      reader.drawBMP("/ICONS/SetG.bmp", tft, 190, 130);
     } else {
-      reader.drawBMP("/SetR.bmp", tft, 190, 130);
+      reader.drawBMP("/ICONS/SetR.bmp", tft, 190, 130);
     }
   }
 
@@ -527,43 +529,43 @@ void settingsScreenTouchSD(int x, int y) {
     if (commandState == "Fermentation") {
       sensorSleepInterval = sensorSleepIntFerm;
     }
-    reader.drawBMP("/SetG.bmp", tft, 190, 130);
+    reader.drawBMP("/ICONS/SetG.bmp", tft, 190, 130);
   }
 
   // ROW3COL1 Button Touch (1150-1750,3100-3850)
   if (x >= 1150 && x <= 1750 && y >= 3100 && y <= 3850) {
     Serial.println("Settings Screen, ROW3COL1 Button Touched");
-    reader.drawBMP("/SetR.bmp", tft, 190, 200);
+    reader.drawBMP("/ICONS/SetR.bmp", tft, 190, 200);
   }
 
   // ROW3COL2 Button Touch (1150-1750,1100-1850)
   if (x >= 1150 && x <= 1750 && y >= 1100 && y <= 1850) {
     Serial.println("Settings Screen, ROW3COL2 Button Touched");
-    reader.drawBMP("/SetR.bmp", tft, 190, 200);
+    reader.drawBMP("/ICONS/SetR.bmp", tft, 190, 200);
   }
 
   // ROW3COL3 Button Touch (1150-1750,200-1000)
   if (x >= 1150 && x <= 1750 && y >= 200 && y <= 1000) {
     Serial.println("Settings Screen, ROW3COL3 Button Touched");
-    reader.drawBMP("/SetG.bmp", tft, 190, 200);
+    reader.drawBMP("/ICONS/SetG.bmp", tft, 190, 200);
   }
 
   // ROW4COL1 Button Touch (350-950,3100-3850)
   if (x >= 350 && x <= 950 && y >= 3100 && y <= 3850) {
     Serial.println("Settings Screen, ROW4COL1 Button Touched");
-    reader.drawBMP("/SetR.bmp", tft, 190, 270);
+    reader.drawBMP("/ICONS/SetR.bmp", tft, 190, 270);
   }
 
   // ROW4COL2 Button Touch (350-950,1100-1850)
   if (x >= 350 && x <= 950 && y >= 1100 && y <= 1850) {
     Serial.println("Settings Screen, ROW4COL2 Button Touched");
-    reader.drawBMP("/SetR.bmp", tft, 190, 270);
+    reader.drawBMP("/ICONS/SetR.bmp", tft, 190, 270);
   }
 
   // ROW4COL3 Button Touch (350-950,200-1000)
   if (x >= 350 && x <= 950 && y >= 200 && y <= 1000) {
     Serial.println("Settings Screen, ROW4COL3 Button Touched");
-    reader.drawBMP("/SetG.bmp", tft, 190, 270);
+    reader.drawBMP("/ICONS/SetG.bmp", tft, 190, 270);
   }
 
   drawSettingsScreenValuesSD();
@@ -615,7 +617,7 @@ void checkScreenSwipe() {
  */
 void drawSplashScreenSD(int seconds) {
   Serial.println("Start Screen Splash Screen");
-  reader.drawBMP("/splash.BMP", tft, 0, 0);
+  reader.drawBMP("/ICONS/splash.BMP", tft, 0, 0);
   delay((seconds * 1000));
   tft.fillScreen(ILI9341_BLACK);
 }
@@ -629,18 +631,18 @@ void drawSplashScreenSD(int seconds) {
 void drawMainScreenSD() {
   if (refresh) {
     tft.fillScreen(ILI9341_BLACK);
-    reader.drawBMP("/Ferm.bmp", tft, 8, 8);
+    reader.drawBMP("/ICONS/Ferm.bmp", tft, 8, 8);
     if (ENABLE_SETTINGS_SCREEN) {
-      reader.drawBMP("/Settings.bmp", tft, 200, 5);
+      reader.drawBMP("/ICONS/Settings.bmp", tft, 200, 5);
     }
-    reader.drawBMP("/STATUS.bmp", tft, 10, 52);    
-    reader.drawBMP("/CurSG.bmp", tft, 10, 90);
-    reader.drawBMP("/OrigSG.bmp", tft, 10, 190);
-    reader.drawBMP("/CurABV.bmp", tft, 10, 210);
-    reader.drawBMP("/Update.bmp", tft, 10, 235);
-    reader.drawBMP("/BATT100.bmp", tft, 20, 254);
-    reader.drawBMP("/SIG100.bmp", tft, 95, 250);
-    reader.drawBMP("/SIG100.bmp", tft, 160, 250);              //TODO update for Interval
+    reader.drawBMP("/ICONS/STATUS.bmp", tft, 10, 52);    
+    reader.drawBMP("/ICONS/CurSG.bmp", tft, 10, 90);
+    reader.drawBMP("/ICONS/OrigSG.bmp", tft, 10, 190);
+    reader.drawBMP("/ICONS/CurABV.bmp", tft, 10, 210);
+    reader.drawBMP("/ICONS/Update.bmp", tft, 10, 235);
+    reader.drawBMP("/ICONS/BATT100.bmp", tft, 20, 254);
+    reader.drawBMP("/ICONS/SIG100.bmp", tft, 95, 250);
+    reader.drawBMP("/ICONS/time.bmp", tft, 160, 250);              //TODO update for Interval
     
     drawMainScreenStatusSD();
     drawMainScreenButtonSD();
@@ -684,12 +686,12 @@ void drawMainScreenValuesSD() {
   drawMainScreenSensorLastSD();
 
   // Sensor Battery
-  //reader.drawBMP("/BATT100.bmp", tft, 25, 254);                         // Posible dynamic image
+  //reader.drawBMP("/ICONS/BATT100.bmp", tft, 25, 254);                         // Posible dynamic image
   tft.fillRect(43, 257, 40, 10, ILI9341_BLACK);
   drawStrings(45, 258, String(sensorBattery) + " V");
 
   // Sensor Signal
-  //reader.drawBMP("/SIG100.bmp", tft, 125, 250);                         // Posible dynamic image
+  //reader.drawBMP("/ICONS/SIG100.bmp", tft, 125, 250);                         // Posible dynamic image
   tft.fillRect(118, 257, 35, 10, ILI9341_BLACK);
   drawStrings(120, 258, String(sensorSignal) + " %");
 
@@ -727,13 +729,13 @@ void drawMainScreenSensorLastSD() {
 void drawMainScreenStatusSD() {
   // Status Tag
   if (statusState == "Waiting") {
-    reader.drawBMP("/WaitS.bmp", tft, 105, 45);
+    reader.drawBMP("/ICONS/WaitS.bmp", tft, 105, 45);
   } else if (statusState == "Ready") {
-    reader.drawBMP("/ReadyS.bmp", tft, 105, 45);
+    reader.drawBMP("/ICONS/ReadyS.bmp", tft, 105, 45);
   } else if (statusState == "InProgress") {
-    reader.drawBMP("/ProgS.bmp", tft, 105, 45); 
+    reader.drawBMP("/ICONS/ProgS.bmp", tft, 105, 45); 
   } else if (statusState == "Complete") {
-    reader.drawBMP("/COMP.bmp", tft, 105, 45); 
+    reader.drawBMP("/ICONS/COMPS.bmp", tft, 105, 45); 
   }  
 }
 
@@ -746,15 +748,15 @@ void drawMainScreenButtonSD() {
   if (commandState == "Standby" && statusState == "Waiting") {
     tft.fillRect(10, 275, 230, 45, ILI9341_BLACK);
   } else if (commandState == "Standby" && statusState == "Ready") {
-    reader.drawBMP("/START.bmp", tft, 10, 275);
+    reader.drawBMP("/ICONS/START.bmp", tft, 10, 275);
   } else if (commandState == "Standby" && statusState == "Complete") {
-    reader.drawBMP("/START.bmp", tft, 10, 275);
+    reader.drawBMP("/ICONS/START.bmp", tft, 10, 275);
   } else if (commandState == "Fermentation" && statusState == "InProgress") {
     tft.fillRect(10, 275, 230, 45, ILI9341_BLACK);
-    reader.drawBMP("/STOP.bmp", tft, 65, 275);
+    reader.drawBMP("/ICONS/STOP.bmp", tft, 10, 275);
   } else if (commandState == "Fermentation" && statusState == "Complete") {
     tft.fillRect(10, 275, 230, 45, ILI9341_BLACK);
-    reader.drawBMP("/STOP.bmp", tft, 65, 275);
+    reader.drawBMP("/ICONS/STOP.bmp", tft, 10, 275);
   }    
 }
 
@@ -767,43 +769,43 @@ void drawSettingsScreenSD() {
   if (refresh) {
     tft.fillScreen(ILI9341_BLACK);
 
-    reader.drawBMP("/SETMENU.bmp", tft, 8, 8);
-    reader.drawBMP("/X.bmp", tft, 200, 5);
+    reader.drawBMP("/ICONS/SETMENU.bmp", tft, 8, 8);
+    reader.drawBMP("/ICONS/X.bmp", tft, 200, 5);
 
     drawStrings(10, 50, "Standby Interval (min)");
-    reader.drawBMP("/BlueL.bmp", tft, 5, 60);
+    reader.drawBMP("/ICONS/BlueL.bmp", tft, 5, 60);
     tft.setTextSize(4);
     //drawStrings(60, 70, "888");                                //TODO Input Value
     tft.setTextSize(1);
-    reader.drawBMP("/BlueR.bmp", tft, 135, 60);
-    reader.drawBMP("/SetG.bmp", tft, 190, 60);
+    reader.drawBMP("/ICONS/BlueR.bmp", tft, 135, 60);
+    reader.drawBMP("/ICONS/SetG.bmp", tft, 190, 60);
 
 
     drawStrings(10, 120, "Fermentation Interval (min)");
-    reader.drawBMP("/BlueL.bmp", tft, 5, 130);
+    reader.drawBMP("/ICONS/BlueL.bmp", tft, 5, 130);
     tft.setTextSize(4);
     //drawStrings(60, 140, "888");                                //TODO Input Value
     tft.setTextSize(1);
-    reader.drawBMP("/BlueR.bmp", tft, 135, 130);
-    reader.drawBMP("/SetG.bmp", tft, 190, 130);
+    reader.drawBMP("/ICONS/BlueR.bmp", tft, 135, 130);
+    reader.drawBMP("/ICONS/SetG.bmp", tft, 190, 130);
 
 
     drawStrings(10, 190, "Calibration Water (1.000)");
-    reader.drawBMP("/BlueL.bmp", tft, 5, 200);
+    reader.drawBMP("/ICONS/BlueL.bmp", tft, 5, 200);
     tft.setTextSize(4);
     //drawStrings(60, 210, "888");                                //TODO Input Value
     tft.setTextSize(1);
-    reader.drawBMP("/BlueR.bmp", tft, 135, 200);
-    reader.drawBMP("/SetG.bmp", tft, 190, 200);
+    reader.drawBMP("/ICONS/BlueR.bmp", tft, 135, 200);
+    reader.drawBMP("/ICONS/SetG.bmp", tft, 190, 200);
 
 
     drawStrings(10, 260, "Calibration Solution");
-    reader.drawBMP("/BlueL.bmp", tft, 5, 270);
+    reader.drawBMP("/ICONS/BlueL.bmp", tft, 5, 270);
     tft.setTextSize(4);
     //drawStrings(60, 280, "888");                                //TODO Input Value
     tft.setTextSize(1);
-    reader.drawBMP("/BlueR.bmp", tft, 135, 270);
-    reader.drawBMP("/SetG.bmp", tft, 190, 270);
+    reader.drawBMP("/ICONS/BlueR.bmp", tft, 135, 270);
+    reader.drawBMP("/ICONS/SetG.bmp", tft, 190, 270);
   }
   refresh = false;
 
@@ -1159,7 +1161,7 @@ void unpackageMessage(char* payload) {
       }
       
       sensorLastUpdate = millis()/1000;
-      if (enableScreenSD) {
+      if (enableScreenSD && screen == 0) {
         drawMainScreenValuesSD();     
       }
       
