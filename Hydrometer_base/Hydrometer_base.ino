@@ -78,13 +78,13 @@ bool sensorConnected = false;
 int sensorLastUpdate = -10000;
 int sensorSleepInterval = 30;    // Default sleep interval in seconds
 int sensorSleepIntStdby = 30;    // Standby interval = 30 seconds
-int sensorSleepIntFerm = 10;   // Fermentation interval = 2 hours
+int sensorSleepIntFerm = 7200;   // Fermentation interval = 2 hours
 int sensorSleepIntStdbySet = 30;
 int sensorSleepIntFermSet = 7200;
 int sensorSampleNumber = 0;      // Default number of samples
 
 // screen variables
-#define ENABLE_SETTINGS_SCREEN true
+#define ENABLE_SETTINGS_SCREEN false
 bool enableScreenSD = true;
 bool touchActive = false;        // Prevent double screen shift
 int touchLast = 0;               // Slow down button touch
